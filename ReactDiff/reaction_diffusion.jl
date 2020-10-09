@@ -3,24 +3,28 @@
 # FitzHugh-Nagumo equation
 #
 
+using CPUTime
+using Printf      # to use macro:  @printf "volume = %0.3f\n" vol 
 using Plots
-gr()
+gr(show = true)
+using Interact
 
 # computation area
-lx = 1.0
-ly = 1.0
+const lx = 1.0
+const ly = 1.0
 
 # grid size for x,y-dimensions
-mx = 64
-my = 64 
+const mx = 64
+const my = 64
 
-# grid spacings
+# grid spacings and cell volume
 dx = lx/mx
-dy = ly/mx
+dy = ly/my
 dv = dx*dy
 
-x = zeros(Float64, mx)
-y = zeros(Float64, my)
+# cell center x-y
+x = Array{Float64}(undef, mx)
+y = Array{Float64}(undef, my)
 for i=1:mx
   x[i] = 0.5*dx + (i-1)*dx 
 end
@@ -30,9 +34,9 @@ end
 
 # time vars.
 Time    = 0.0
-dTime   = 0.01
-timeMax =10.0
-Nsteps=Int(timeMax/dTime)
+dTime   = 0.0001
+timeMax = 1.0
+Nsteps=Int64(timeMax/dTime)
 
 # main vars.
 u = zeros(Float64, mx, my)
@@ -56,11 +60,17 @@ a = 1.2
 b = 0.5
 c = 0.0
 
-# initializations
+# initializations 
 for i=1:mx, j=1:my
-   u[i,j] = 2*rand()-1
-   v[i,j] = 2*rand()-1
+   u[i,j] = rand()
+   v[i,j] = rand()
 end
+
+# initial plot
+p1i=contour(x, y, u, title="U:t=0", xlim = (0, lx),ylim = (0, ly),framestyle=:box, c=:rainbow, size=[800,400], aspect_ratio=1 );
+p2i=contour(x, y, v, title="V:t=0", xlim = (0, lx),ylim = (0, ly),framestyle=:box, c=:rainbow, size=[800,400], aspect_ratio=1 );
+display(plot(p1i,p2i,layout=(1,2)))
+savefig( "initial_uv.png" )
 
 # functions
 function set_dflux()
@@ -91,22 +101,23 @@ end
 function set_RHS()
    for i=1:mx, j=1:my
      global RHSU[i,j] =-( dflux_ux[i+1,j]*dy
-                  -dflux_ux[i  ,j]*dy
-                  +dflux_uy[i,j+1]*dx
-                  -dflux_uy[i  ,j]*dx)/dv
+                         -dflux_ux[i  ,j]*dy
+                         +dflux_uy[i,j+1]*dx
+                         -dflux_uy[i  ,j]*dx)/dv
                   + u[i,j]-u[i,j]^3-v[i,j]
      global RHSV[i,j] =-( dflux_vx[i+1,j]*dy
-                  -dflux_vx[i  ,j]*dy
-                  +dflux_vy[i,j+1]*dx
-                  -dflux_vy[i  ,j]*dx)/dv
+                         -dflux_vx[i  ,j]*dy
+                         +dflux_vy[i,j+1]*dx
+                         -dflux_vy[i  ,j]*dx)/dv
                   +a*(u[i,j]-b*v[i,j]-c)
    end
 end
 
+
 # main
-for iTime in 1:Nsteps
+for iTime = 1:Nsteps
    global Time = Time + dTime
-   #println(Time)
+   println("time = ", Time)
    
    set_dflux()
    
@@ -116,13 +127,14 @@ for iTime in 1:Nsteps
    global vnew[:,:] = v[:,:] + RHSV[:,:]*dTime
    global u[:,:] = unew[:,:]
    global v[:,:] = vnew[:,:]
-   
-   p1=contour(x, y, u, title="U: camera 30 30 (default)", size=[800,400] );
-   p2=contour(x, y, v, title="V: camera 30 30 (default)", size=[800,400] );
-   plot(p1,p2,layout=2)
-   
-   sleep(2)
-end
 
-#savefig( "test.png" )
+   println(minimum(u),"  ",maximum(u))  
+   println(minimum(v),"  ",maximum(v))   
+   
+   p1=contour(x,y,u,title="U:",xlim=(0,lx),ylim=(0,ly),framestyle=:box,c=:rainbow,aspect_ratio=1);    
+   p2=contour(x,y,v,title="V:",xlim=(0,lx),ylim=(0,ly),framestyle=:box,c=:rainbow,aspect_ratio=1);
+   display(plot(p1,p2,layout=(1,2)))
+   
+   sleep(0.01)
+end
 
